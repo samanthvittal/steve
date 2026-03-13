@@ -1,1 +1,139 @@
-# steve
+# Steve
+
+An opinionated development workflow for Claude Code. Persistent state management, enforced phases, and automated Sonnet review gates — so nothing gets silently dropped between sessions.
+
+Named after Steve Rogers. No shortcuts, no half-measures.
+
+## What Steve Does
+
+Steve manages your entire project lifecycle through an enforced pipeline:
+
+```
+init → design → prd → plan-phase → next-task → test-checkpoint → complete-phase
+                                        ↑                              ↓
+                                        └──────── (next phase) ────────┘
+```
+
+Each stage produces artifacts, persists state to disk, and refuses to run out of order. Sonnet review gates fire automatically after design, PRD, phase planning, and test checkpoints to catch drift before it compounds.
+
+## Installation
+
+```bash
+git clone https://github.com/samanthvittal/steve.git
+cd steve
+./install.sh
+```
+
+This installs:
+- `steve` CLI to `~/.local/bin/`
+- Command files to `~/.steve/commands/`
+- Version tracking to `~/.steve/version`
+
+Make sure `~/.local/bin` is in your `PATH`.
+
+## Quick Start
+
+```bash
+# In your project directory
+steve init
+
+# Then follow the pipeline
+/steve:design          # Architecture design conversation
+/steve:prd             # Generate PRD + phase plan
+/steve:plan-phase      # Break current phase into tasks
+/steve:next-task       # Implement one task (TDD/BDD)
+/steve:test-checkpoint # Verify phase completeness
+/steve:complete-phase  # Merge, archive, advance
+```
+
+After `/clear` or a new session:
+```
+/steve:resume          # Reconstruct context from state files
+```
+
+## Commands
+
+### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `steve init` | Install commands into project, launch Claude Code with `/steve:init` |
+| `steve update` | Check for updates, refresh project commands |
+| `steve version` | Print version |
+| `steve help` | Show usage |
+
+### Slash Commands
+
+| Command | Requires State | Sets State | Description |
+|---------|---------------|------------|-------------|
+| `/steve:init` | — | `initialized` | Interactive project scaffold (config, CLAUDE.md, .gitignore) |
+| `/steve:design` | `initialized` | `designed` | Architecture design conversation with Sonnet review |
+| `/steve:prd` | `designed` | `specced` | Generate PRD + phase plan from design (no user questions) |
+| `/steve:plan-phase` | `specced` or `phase-completed` | `phase-planned` | Break current phase into 3-6 tasks |
+| `/steve:next-task` | `phase-planned` or `in-progress` | `in-progress` | Implement next unchecked task (TDD or BDD) |
+| `/steve:test-checkpoint` | `in-progress` | `checkpoint-passed` | Run tests, security review, feature completeness check |
+| `/steve:complete-phase` | `checkpoint-passed` | `phase-completed` or `completed` | Archive, merge branch, advance to next phase |
+| `/steve:resume` | any | (read-only) | Reconstruct context from state files + git history |
+
+## State Machine
+
+```
+initialized → designed → specced → phase-planned → in-progress → checkpoint-passed → phase-completed
+                                        ↑                                                   ↓
+                                        └───────────────────────────────────────────────────┘
+                                                    (loop until all phases done → completed)
+```
+
+Commands enforce this pipeline. Running `/steve:prd` when state is `initialized` will tell you to run `/steve:design` first.
+
+## Review Gates
+
+Steve automatically spawns Sonnet subagents for review at four points:
+
+1. **After design** — completeness, contradictions, OWASP gaps, feasibility
+2. **After PRD** — feature coverage, scope drift, vertical slices, phase dependencies
+3. **After phase planning** — task coverage, granularity, ordering, test integration
+4. **At test checkpoint** — security review + feature completeness against PRD
+
+Document reviews (1-3) auto-fix issues up to 3 iterations. Code reviews (4) report gaps but do NOT auto-fix — the user decides.
+
+## File Structure
+
+```
+your-project/
+├── .claude/commands/        # Steve slash commands (copied by `steve init`)
+│   ├── steve:init.md
+│   ├── steve:design.md
+│   ├── steve:prd.md
+│   ├── steve:plan-phase.md
+│   ├── steve:next-task.md
+│   ├── steve:test-checkpoint.md
+│   ├── steve:complete-phase.md
+│   └── steve:resume.md
+├── docs/steve/
+│   ├── config.json          # Project state (workflowState, currentPhase, etc.)
+│   ├── design.md            # Architecture design document
+│   ├── prd.md               # Product requirements + phase plan
+│   ├── current-phase.md     # Active phase task checklist
+│   ├── completed-phases.md  # Archive of finished phases
+│   └── reviews/             # Sonnet review feedback
+├── CLAUDE.md                # Project intelligence (generated by /steve:init)
+└── .gitignore               # Stack-appropriate ignores
+```
+
+## Key Principles
+
+- **No templates** — everything generated dynamically based on your stack choices
+- **Self-contained** — only depends on Claude Code built-in tools
+- **Persistent state** — survives `/clear`, new sessions, context resets
+- **Vertical slices** — each phase delivers a complete feature, not a horizontal layer
+- **Enforced pipeline** — commands refuse to run out of order
+- **TDD/BDD first** — chosen at init, enforced in every task
+
+## Version
+
+v0.1.0
+
+## License
+
+MIT
