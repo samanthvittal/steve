@@ -2,7 +2,7 @@
 
 An opinionated development workflow for Claude Code. Persistent state management, enforced phases, and automated Sonnet review gates — so nothing gets silently dropped between sessions.
 
-Named after Steve Rogers. No shortcuts, no half-measures.
+Named after Steve Rogers. No shortcuts, no half-measures. I can do this all day!
 
 ## What Steve Does
 
