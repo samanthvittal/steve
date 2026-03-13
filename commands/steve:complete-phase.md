@@ -62,18 +62,20 @@ Ask the user: "Merge `{branch-name}` to main? (yes/no)"
 
 ## Step 3: Update State
 
-1. Check if `currentPhase` is already in the `completedPhases` array
-   - If already present (idempotent re-run): skip steps 2-4 below, jump directly to the commit and announce
-   - If not present: add `currentPhase` to `completedPhases` array, then continue
-2. Check if this is the **final phase**: `currentPhase == totalPhases`
+If `currentPhase` is already in the `completedPhases` array (idempotent re-run from the check in "Idempotency Check" above): do NOT add it again and do NOT increment `currentPhase`. Skip directly to the commit and announce for the appropriate branch (final or not final) below.
+
+If `currentPhase` is NOT in `completedPhases`: add it to the array, then continue.
+
+Check if this is the **final phase**: `currentPhase == totalPhases`
 
 ### If final phase:
 - Set `workflowState` to `"completed"`
 - `currentPhase` stays at `totalPhases` (do not increment)
+- Clear `docs/steve/current-phase.md` (replace with empty placeholder or delete)
 - Commit:
 
 ```
-git add docs/steve/completed-phases.md docs/steve/config.json
+git add docs/steve/completed-phases.md docs/steve/current-phase.md docs/steve/config.json
 git commit -m "feat: complete final phase — project done"
 ```
 

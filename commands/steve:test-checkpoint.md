@@ -36,7 +36,7 @@ Perform each check sequentially. Update the `## Test Checkpoint` checkboxes in `
 
 Run the full test suite using the test runner from `CLAUDE.md`:
 - If tests pass: mark `[x] All tests pass`
-- If tests fail: report the failures, leave state as `in-progress`
+- If tests fail: report the failures, leave state as `in-progress`. STOP — do not continue to remaining checks.
 
 > "Test suite: {X} passed, {Y} failed"
 

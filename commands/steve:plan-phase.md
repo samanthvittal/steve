@@ -83,7 +83,8 @@ After writing `docs/steve/current-phase.md`:
    > Return: APPROVED or ISSUES FOUND (with specifics)."
 
 3. If ISSUES FOUND: fix, re-submit. Max 3 iterations.
-4. Save review feedback to `docs/steve/reviews/phase-{N}-plan-review.md`.
+4. If still failing after 3: surface issues to user for guidance.
+5. Save review feedback to `docs/steve/reviews/phase-{N}-plan-review.md`.
 
 ## Update State
 

@@ -14,6 +14,7 @@ Read these files in order. If `config.json` is missing, stop immediately.
 4. `docs/steve/prd.md` — if exists, phase plan
 5. `docs/steve/current-phase.md` — if exists, active phase and task progress
 6. `docs/steve/completed-phases.md` — completed work history
+7. `docs/steve/reviews/*.md` — if any exist, read review files for history summary in Step 5
 
 ## Step 2: Scan Git History
 
@@ -42,7 +43,7 @@ Use these heuristics (Claude Code does not expose token counts directly):
 - **Mid-session** (if resume read many large files — design.md, prd.md, multiple reviews):
   → Context is partially consumed by the resume itself. Recommend completing 1-2 tasks, then `/clear`.
 
-- **Late session** (multiple tasks already completed in this session — inferred by counting task checkboxes marked `[x]` in `current-phase.md` that have corresponding recent commits in the git log):
+- **Late session** (this is a best-effort heuristic — if there are many messages in the current conversation, or if you notice sluggish responses / repeated context):
   → Suggest running `/clear` after completing the current task.
 
 Report your assessment:
