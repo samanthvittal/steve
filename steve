@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STEVE_HOME="${HOME}/.steve"
+STEVE_BIN="${HOME}/.local/bin/steve"
+STEVE_REPO="samanthvittal/steve"
+STEVE_VERSION=$(cat "${STEVE_HOME}/version" 2>/dev/null || echo "unknown")
+
+usage() {
+    cat <<EOF
+Steve v${STEVE_VERSION} — Opinionated development workflow for Claude Code
+
+Usage:
+  steve init      Bootstrap a project (copies commands, launches Claude Code)
+  steve update    Check for updates and refresh commands
+  steve version   Show installed version
+  steve help      Show this help message
+
+EOF
+}
+
+cmd_init() {
+    # Check claude CLI exists
+    if ! command -v claude &> /dev/null; then
+        echo "Error: Claude Code CLI not found. Install it first."
+        exit 1
+    fi
+
+    # Check git repo
+    if ! git rev-parse --is-inside-work-tree &> /dev/null 2>&1; then
+        read -rp "No git repository found. Initialize one? (y/n): " init_git
+        if [[ "$init_git" == "y" ]]; then
+            git init
+        else
+            echo "Error: Steve requires a git repository. Please initialize one and try again."
+            exit 1
+        fi
+    fi
+
+    # Check steve is installed
+    if [[ ! -d "${STEVE_HOME}/commands" ]]; then
+        echo "Error: Steve commands not found at ${STEVE_HOME}/commands."
+        echo "Please run the install script first."
+        exit 1
+    fi
+
+    # Copy/overwrite slash commands into project
+    mkdir -p .claude/commands
+    cp -f "${STEVE_HOME}/commands/"steve:*.md .claude/commands/
+    echo "Steve v${STEVE_VERSION} — commands installed to .claude/commands/"
+
+    # Launch Claude Code with the init command
+    claude "/steve:init"
+}
+
+cmd_update() {
+    echo "Checking for updates..."
+
+    # Try gh first, fall back to curl
+    local latest_version
+    if command -v gh &> /dev/null; then
+        latest_version=$(gh api "repos/${STEVE_REPO}/releases/latest" --jq '.tag_name' 2>/dev/null | sed 's/^v//')
+    else
+        latest_version=$(curl -sL "https://api.github.com/repos/${STEVE_REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"v?([^"]+)".*/\1/')
+    fi
+
+    if [[ -z "$latest_version" ]]; then
+        echo "Error: Could not check for updates. Check your internet connection."
+        exit 1
+    fi
+
+    if [[ "$latest_version" == "$STEVE_VERSION" ]]; then
+        echo "Steve v${STEVE_VERSION} is already the latest."
+    else
+        echo "New version available: v${latest_version} (current: v${STEVE_VERSION})"
+        echo "Updating..."
+
+        # Download and extract the latest release
+        local tmp_dir
+        tmp_dir=$(mktemp -d)
+        trap 'rm -rf "$tmp_dir"' EXIT
+
+        if command -v gh &> /dev/null; then
+            gh release download "v${latest_version}" --repo "${STEVE_REPO}" --dir "$tmp_dir" --pattern "*.tar.gz" 2>/dev/null || \
+            gh release download "${latest_version}" --repo "${STEVE_REPO}" --dir "$tmp_dir" --pattern "*.tar.gz" 2>/dev/null
+        else
+            curl -sL "https://github.com/${STEVE_REPO}/archive/refs/tags/v${latest_version}.tar.gz" -o "${tmp_dir}/steve.tar.gz"
+        fi
+
+        local archive
+        archive=$(find "$tmp_dir" -name "*.tar.gz" | head -1)
+        if [[ -z "$archive" ]]; then
+            echo "Error: Could not download update."
+            exit 1
+        fi
+
+        tar -xzf "$archive" -C "$tmp_dir" --strip-components=1
+
+        # Update CLI binary
+        if [[ -f "${tmp_dir}/steve" ]]; then
+            cp -f "${tmp_dir}/steve" "$STEVE_BIN"
+            chmod +x "$STEVE_BIN"
+        fi
+
+        # Update commands
+        if [[ -d "${tmp_dir}/commands" ]]; then
+            mkdir -p "${STEVE_HOME}/commands"
+            cp -f "${tmp_dir}/commands/"steve:*.md "${STEVE_HOME}/commands/"
+        fi
+
+        # Update version
+        if [[ -f "${tmp_dir}/VERSION" ]]; then
+            cp -f "${tmp_dir}/VERSION" "${STEVE_HOME}/version"
+        fi
+
+        STEVE_VERSION=$(cat "${STEVE_HOME}/version" 2>/dev/null || echo "$latest_version")
+        echo "Updated to Steve v${STEVE_VERSION}."
+    fi
+
+    # If inside a project with .claude/commands, update project commands too
+    if [[ -d ".claude/commands" ]] && ls .claude/commands/steve:*.md &> /dev/null; then
+        cp -f "${STEVE_HOME}/commands/"steve:*.md .claude/commands/
+        echo "Project commands updated to Steve v${STEVE_VERSION}."
+    fi
+}
+
+cmd_version() {
+    echo "Steve v${STEVE_VERSION}"
+}
+
+# Main dispatch
+case "${1:-}" in
+    init)
+        cmd_init
+        ;;
+    update)
+        cmd_update
+        ;;
+    version|--version|-v)
+        cmd_version
+        ;;
+    help|--help|-h|"")
+        usage
+        ;;
+    *)
+        echo "Unknown command: $1"
+        usage
+        exit 1
+        ;;
+esac
